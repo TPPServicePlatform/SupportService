@@ -79,18 +79,9 @@ class Reports:
                 return None
             return report._asdict()
     
-    def get_by_account(self, username: str) -> Optional[list[dict]]:
+    def get_by_target(self, type: str, target_identifier: str) -> Optional[list[dict]]:
         with self.engine.connect() as connection:
-            query = self.reports.select().where(self.reports.c.type == "ACCOUNT").where(self.reports.c.target_identifier == username)
-            result = connection.execute(query)
-            reports = result.fetchall()
-            if reports is None:
-                return None
-            return [report._asdict() for report in reports]
-    
-    def get_by_service(self, uuid: str) -> Optional[list[dict]]:
-        with self.engine.connect() as connection:
-            query = self.reports.select().where(self.reports.c.type == "SERVICE").where(self.reports.c.target_identifier == uuid)
+            query = self.reports.select().where(self.reports.c.type == type).where(self.reports.c.target_identifier == target_identifier)
             result = connection.execute(query)
             reports = result.fetchall()
             if reports is None:

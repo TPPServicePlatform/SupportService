@@ -40,9 +40,53 @@ app.add_middleware(
 sql_manager = Reports()
 
 VALID_REPORT_TYPES = {"ACCOUNT", "SERVICE"}
+REQUIRED_REPORT_FIELDS = {"title", "description", "complainant", "type", "target_identifier"}
 
 starting_duration = time_to_string(time.time() - time_start)
 logger.info(f"Security API started in {starting_duration}")
 
 # TODO: (General) -> Create tests for each endpoint && add the required checks in each endpoint
 
+@app.put("/accounts/{username}")
+def report_account(username: str, body: dict):
+    data = {key: value for key, value in body.items() if key in REQUIRED_REPORT_FIELDS}
+    data["type"] = "ACCOUNT"
+    data["target_identifier"] = username
+
+    if not all([field in data for field in REQUIRED_REPORT_FIELDS]):
+        missing_fields = REQUIRED_REPORT_FIELDS - set(data.keys())
+        raise HTTPException(status_code=400, detail=f"Missing fields: {', '.join(missing_fields)}")
+    
+    uuid = sql_manager.insert(**data)
+    if not uuid:
+        raise HTTPException(status_code=400, detail="Error while inserting the report")
+    return {"status": "ok", "report_id": uuid}
+
+@app.put("/services/{uuid}")
+def report_service(uuid: str, body: dict):
+    data = {key: value for key, value in body.items() if key in REQUIRED_REPORT_FIELDS}
+    data["type"] = "SERVICE"
+    data["target_identifier"] = uuid
+
+    if not all([field in data for field in REQUIRED_REPORT_FIELDS]):
+        missing_fields = REQUIRED_REPORT_FIELDS - set(data.keys())
+        raise HTTPException(status_code=400, detail=f"Missing fields: {', '.join(missing_fields)}")
+    
+    uuid = sql_manager.insert(**data)
+    if not uuid:
+        raise HTTPException(status_code=400, detail="Error while inserting the report")
+    return {"status": "ok", "report_id": uuid}
+
+@app.get("/accounts/{username}")
+def get_account_reports(username: str):
+    reports = sql_manager.get_by_target("ACCOUNT", username)
+    if not reports:
+        raise HTTPException(status_code=404, detail="Reports not found")
+    return reports
+
+@app.get("/services/{uuid}")
+def get_service_reports(uuid: str):
+    reports = sql_manager.get_by_target("SERVICE", uuid)
+    if not reports:
+        raise HTTPException(status_code=404, detail="Reports not found")
+    return reports
