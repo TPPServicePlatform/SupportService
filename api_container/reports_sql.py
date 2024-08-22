@@ -4,6 +4,8 @@ from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from lib.utils import get_actual_time, get_engine
 import logging as logger
 from sqlalchemy.orm import Session
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.sql import text
 
 HOUR = 60 * 60
 MINUTE = 60
@@ -35,7 +37,7 @@ class Reports:
             self.reports = Table(
                 'reports',
                 metadata,
-                Column('uuid', String, primary_key=True, unique=True),
+                Column('uuid', UUID(as_uuid=True), primary_key=True, server_default=text("uuid_generate_v4()")),
                 Column('type', String),
                 Column('target_identifier', String),
                 Column('title', String),
