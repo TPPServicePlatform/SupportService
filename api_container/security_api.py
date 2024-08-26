@@ -4,8 +4,11 @@ import time
 from fastapi import FastAPI, File, UploadFile, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from lib.utils import *
 import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'lib')))
+from lib.utils import time_to_string, get_test_engine
 
 time_start = time.time()
 
@@ -37,7 +40,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-sql_manager = Reports()
+if os.getenv('TESTING'):
+    test_engine = get_test_engine()
+    sql_manager = Reports(engine=test_engine)
+else:
+    sql_manager = Reports()
 
 VALID_REPORT_TYPES = {"ACCOUNT", "SERVICE"}
 REQUIRED_REPORT_FIELDS = {"title", "description", "complainant", "type", "target_identifier"}
