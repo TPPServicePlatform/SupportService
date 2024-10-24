@@ -40,17 +40,12 @@ class Reports:
         self.Session = sessionmaker(bind=self.engine)
 
     def create_table(self):
-        if self.engine.dialect.name == 'sqlite':
-            uuid_column = Column('uuid', String, primary_key=True, default=lambda: str(uuid.uuid4()))
-        else:
-            uuid_column = Column('uuid', UUID(as_uuid=True), primary_key=True, server_default=text("uuid_generate_v4()"))
-            
         with Session(self.engine) as session:
             metadata = MetaData()
             self.reports = Table(
                 'reports',
                 metadata,
-                uuid_column,
+                Column('uuid', String, primary_key=True, default=lambda: str(uuid.uuid4())),
                 Column('type', String),
                 Column('target_identifier', String),
                 Column('title', String),
