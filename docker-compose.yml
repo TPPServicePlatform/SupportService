@@ -1,0 +1,17 @@
+name: "security-service"
+
+services:
+    
+  security-api:
+    build:
+      context: ./
+      dockerfile: ./api_container/Dockerfile
+    ports:
+      - "${EXTERNAL_SECURITY_API_PORT}:${SECURITY_API_PORT}"
+    restart: unless-stopped
+    networks:
+      - my-services-network
+
+networks:
+  my-services-network:
+    external: true
