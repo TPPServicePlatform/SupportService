@@ -51,7 +51,8 @@ else:
 
 VALID_REPORT_TYPES = {"ACCOUNT", "SERVICE"}
 REQUIRED_REPORT_FIELDS = {"title", "description", "complainant", "type", "target_identifier"}
-
+REQUIRED_HELP_TK_FIELDS = {"title", "description"}
+REQUIRED_HELP_TK_UPDATE_FIELDS = {"comment", "resolved"}
 starting_duration = time_to_string(time.time() - time_start)
 logger.info(f"Support API started in {starting_duration}")
 
@@ -102,8 +103,16 @@ def get_service_reports(uuid: str):
     return reports
 
 @app.put("/help/new/{requester_id}")
-def create_help_tk(requester_id: str, title: str, description: str):
-    uuid = help_tks_manager.insert(title, description, requester_id)
+def create_help_tk(requester_id: str, body: dict):
+    if not all([field in body for field in REQUIRED_HELP_TK_FIELDS]):
+        missing_fields = REQUIRED_HELP_TK_FIELDS - set(body.keys())
+        raise HTTPException(status_code=400, detail=f"Missing fields: {', '.join(missing_fields)}")
+    extra_fields = REQUIRED_HELP_TK_FIELDS - set(body.keys())
+    if extra_fields:
+        raise HTTPException(status_code=400, detail=f"Extra fields: {', '.join(extra_fields)}")
+    if len(body["title"]) == 0 or len(body["description"]) == 0:
+        raise HTTPException(status_code=400, detail="Title and description cannot be empty")
+    uuid = help_tks_manager.insert(**body, requester=requester_id)
     if not uuid:
         raise HTTPException(status_code=400, detail="Error while inserting the report")
     return {"status": "ok", "report_id": uuid}
@@ -123,8 +132,16 @@ def get_help_tks(requester_id: str):
     return reports
 
 @app.put("/help/{uuid}")
-def update_help_tk(uuid: str, comment: str, resolved: bool):
-    result = help_tks_manager.update(uuid, comment, resolved)
+def update_help_tk(uuid: str, body: dict):
+    if not all([field in body for field in REQUIRED_HELP_TK_UPDATE_FIELDS]):
+        missing_fields = REQUIRED_HELP_TK_UPDATE_FIELDS - set(body.keys())
+        raise HTTPException(status_code=400, detail=f"Missing fields: {', '.join(missing_fields)}")
+    extra_fields = REQUIRED_HELP_TK_UPDATE_FIELDS - set(body.keys())
+    if extra_fields:
+        raise HTTPException(status_code=400, detail=f"Extra fields: {', '.join(extra_fields)}")
+    if len(body["comment"]) == 0:
+        raise HTTPException(status_code=400, detail="Comment cannot be empty")
+    result = help_tks_manager.update(uuid, **body)
     if not result:
         raise HTTPException(status_code=400, detail="Error while updating the report")
     return {"status": "ok"}
