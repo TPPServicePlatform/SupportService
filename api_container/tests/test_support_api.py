@@ -4,7 +4,7 @@ import os
 import sys
 
 # Run with the following command:
-# pytest SecurityService/api_container/tests/test_security_api.py
+# pytest SupportService/api_container/tests/test_support_api.py
 
 # Set the TESTING environment variable
 os.environ['TESTING'] = '1'
@@ -16,7 +16,7 @@ os.environ['DATABASE_URL'] = 'sqlite:///test.db'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'lib')))
 
-from security_api import app, sql_manager, REQUIRED_REPORT_FIELDS
+from SupportService.api_container.support_api import app, sql_manager, REQUIRED_REPORT_FIELDS
 
 client = TestClient(app)
 

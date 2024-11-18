@@ -1,13 +1,13 @@
-name: "security-service"
+name: "support-service"
 
 services:
     
-  security-api:
+  support-api:
     build:
       context: ./
       dockerfile: ./api_container/Dockerfile
     ports:
-      - "${EXTERNAL_SECURITY_API_PORT}:${SECURITY_API_PORT}"
+      - "${EXTERNAL_SUPPORT_API_PORT}:${SUPPORT_API_PORT}"
     restart: unless-stopped
     networks:
       - my-services-network

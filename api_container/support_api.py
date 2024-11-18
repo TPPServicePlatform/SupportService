@@ -23,8 +23,8 @@ if DEBUG_MODE:
 logger.info("DEBUG_MODE: " + str(DEBUG_MODE))
 
 app = FastAPI(
-    title="Security API",
-    description="API for security reports management",
+    title="Support API",
+    description="API for support reports management",
     version="1.0.0",
     root_path=os.getenv("ROOT_PATH")
 )
@@ -50,7 +50,7 @@ VALID_REPORT_TYPES = {"ACCOUNT", "SERVICE"}
 REQUIRED_REPORT_FIELDS = {"title", "description", "complainant", "type", "target_identifier"}
 
 starting_duration = time_to_string(time.time() - time_start)
-logger.info(f"Security API started in {starting_duration}")
+logger.info(f"Support API started in {starting_duration}")
 
 # TODO: (General) -> Create tests for each endpoint && add the required checks in each endpoint
 

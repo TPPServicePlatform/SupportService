@@ -9,4 +9,4 @@ RUN cat /code/lib/requirements.txt >> /code/requirements.txt
 
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
-CMD ["uvicorn", "security_api:app", "--port", "9212", "--host", "0.0.0.0", "--reload"]
+CMD ["uvicorn", "support_api:app", "--port", "9212", "--host", "0.0.0.0", "--reload"]

@@ -11,7 +11,7 @@ from reports_sql import Reports
 from lib.utils import get_actual_time
 
 # Run with the following command:
-# pytest SecurityService/api_container/tests/test_reports_sql.py
+# pytest SupportService/api_container/tests/test_reports_sql.py
 
 # Set the TESTING environment variable
 os.environ['TESTING'] = '1'
