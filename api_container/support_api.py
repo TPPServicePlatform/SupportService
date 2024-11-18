@@ -1,4 +1,5 @@
 from reports_sql import Reports
+from helptks_sql import HelpTKs
 import logging as logger
 import time
 from fastapi import FastAPI, File, UploadFile, BackgroundTasks, HTTPException
@@ -42,9 +43,11 @@ app.add_middleware(
 
 if os.getenv('TESTING'):
     test_engine = get_test_engine()
-    sql_manager = Reports(engine=test_engine)
+    reports_manager = Reports(engine=test_engine)
+    help_tks_manager = HelpTKs(engine=test_engine)
 else:
-    sql_manager = Reports()
+    reports_manager = Reports()
+    help_tks_manager = HelpTKs()
 
 VALID_REPORT_TYPES = {"ACCOUNT", "SERVICE"}
 REQUIRED_REPORT_FIELDS = {"title", "description", "complainant", "type", "target_identifier"}
@@ -64,7 +67,7 @@ def report_account(username: str, body: dict):
         missing_fields = REQUIRED_REPORT_FIELDS - set(data.keys())
         raise HTTPException(status_code=400, detail=f"Missing fields: {', '.join(missing_fields)}")
     
-    uuid = sql_manager.insert(**data)
+    uuid = reports_manager.insert(**data)
     if not uuid:
         raise HTTPException(status_code=400, detail="Error while inserting the report")
     return {"status": "ok", "report_id": uuid}
@@ -79,21 +82,49 @@ def report_service(uuid: str, body: dict):
         missing_fields = REQUIRED_REPORT_FIELDS - set(data.keys())
         raise HTTPException(status_code=400, detail=f"Missing fields: {', '.join(missing_fields)}")
     
-    uuid = sql_manager.insert(**data)
+    uuid = reports_manager.insert(**data)
     if not uuid:
         raise HTTPException(status_code=400, detail="Error while inserting the report")
     return {"status": "ok", "report_id": uuid}
 
 @app.get("/accounts/{username}")
 def get_account_reports(username: str):
-    reports = sql_manager.get_by_target("ACCOUNT", username)
+    reports = reports_manager.get_by_target("ACCOUNT", username)
     if not reports:
         raise HTTPException(status_code=404, detail="Reports not found")
     return reports
 
 @app.get("/services/{uuid}")
 def get_service_reports(uuid: str):
-    reports = sql_manager.get_by_target("SERVICE", uuid)
+    reports = reports_manager.get_by_target("SERVICE", uuid)
     if not reports:
         raise HTTPException(status_code=404, detail="Reports not found")
     return reports
+
+@app.put("/help/new/{requester_id}")
+def create_help_tk(requester_id: str, title: str, description: str):
+    uuid = help_tks_manager.insert(title, description, requester_id)
+    if not uuid:
+        raise HTTPException(status_code=400, detail="Error while inserting the report")
+    return {"status": "ok", "report_id": uuid}
+
+@app.get("/help/{uuid}")
+def get_help_tk(uuid: str):
+    report = help_tks_manager.get(uuid)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    return report
+
+@app.get("/help/list/{requester_id}")
+def get_help_tks(requester_id: str):
+    reports = help_tks_manager.get_by_user(requester_id)
+    if not reports:
+        raise HTTPException(status_code=404, detail="Reports not found")
+    return reports
+
+@app.put("/help/{uuid}")
+def update_help_tk(uuid: str, comment: str, resolved: bool):
+    result = help_tks_manager.update(uuid, comment, resolved)
+    if not result:
+        raise HTTPException(status_code=400, detail="Error while updating the report")
+    return {"status": "ok"}

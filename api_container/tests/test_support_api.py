@@ -15,16 +15,15 @@ os.environ['DATABASE_URL'] = 'sqlite:///test.db'
 # Add the necessary paths to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'lib')))
-
-from SupportService.api_container.support_api import app, sql_manager, REQUIRED_REPORT_FIELDS
+from SupportService.api_container.support_api import app, reports_manager, help_tks_manager
 
 client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def clear_database():
-    sql_manager.create_table()
-    session = sql_manager.Session()
-    session.query(sql_manager.reports).delete()
+    reports_manager.create_table()
+    session = reports_manager.Session()
+    session.query(reports_manager.reports).delete()
     session.commit()
     session.close()
 
