@@ -61,7 +61,7 @@ def test_get_helptk(helptks, mocker):
     assert helptk['title'] == 'Test Title'
     assert helptk['description'] == 'Test Description'
     assert helptk['requester'] == 'test_user'
-
+    
 def test_delete_helptk(helptks, mocker):
     mocker.patch('lib.utils.get_actual_time', return_value='2023-01-01 00:00:00')
     helptk_uuid = helptks.insert(
@@ -89,3 +89,25 @@ def test_get_helptks_by_user(helptks, mocker):
     helptk_list = helptks.get_by_user(requester='test_user')
     assert helptk_list is not None
     assert len(helptk_list) == 2
+    
+def test_update_helptk(helptks, mocker):
+    mocker.patch('lib.utils.get_actual_time', return_value='2023-01-01 00:00:00')
+    helptk_uuid = helptks.insert(
+        title='Test Title',
+        description='Test Description',
+        requester='test_user'
+    )
+    assert helptk_uuid is not None
+
+    # Update the helptk
+    mocker.patch('lib.utils.get_actual_time', return_value='2023-01-02 00:00:00')
+    result = helptks.update(helptk_uuid, comment='Test Comment', resolved=True)
+    assert result is True
+
+    # Retrieve the updated helptk
+    helptk = helptks.get(helptk_uuid)
+    assert helptk is not None
+    assert len(helptk['comments']) == 1
+    assert helptk['comments'][0]['comment'] == 'Test Comment'
+    assert helptk['resolved'] is True
+

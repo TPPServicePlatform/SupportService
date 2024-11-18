@@ -87,10 +87,12 @@ class HelpTKs:
         with self.engine.connect() as connection:
             query = self.help_tks.select().where(self.help_tks.c.uuid == uuid)
             result = connection.execute(query)
-            report = result.fetchone()
-            if report is None:
+            tk = result.fetchone()
+            if tk is None:
                 return None
-            return report._asdict()
+            dict_tk = tk._asdict()
+            dict_tk['comments'] = eval(dict_tk['comments'])
+            return dict_tk
         
     def delete(self, uuid: str) -> bool:
         with Session(self.engine) as session:
@@ -108,7 +110,36 @@ class HelpTKs:
         with self.engine.connect() as connection:
             query = self.help_tks.select().where(self.help_tks.c.requester == requester)
             result = connection.execute(query)
-            reports = result.fetchall()
-            if reports is None:
+            tks = result.fetchall()
+            if tks is None:
                 return None
-            return [report._asdict() for report in reports]
+            tks_list = []
+            for tk in tks:
+                dict_tk = tk._asdict()
+                dict_tk['comments'] = eval(dict_tk['comments'])
+                tks_list.append(dict_tk)
+            return tks_list
+    
+    def update(self, uuid: str, comment: str, resolved: bool) -> bool:
+        now = get_actual_time()
+        if not self.get(uuid):
+            return False
+        previous_comments = self.get(uuid)['comments']
+        previous_comments.append({
+            "comment": comment,
+            "created_at": now
+        })
+        with Session(self.engine) as session:
+            try:
+                query = self.help_tks.update().where(self.help_tks.c.uuid == uuid).values(
+                    comments=str(previous_comments),
+                    resolved=resolved,
+                    updated_at=now
+                )
+                session.execute(query)
+                session.commit()
+            except SQLAlchemyError as e:
+                logger.error(f"SQLAlchemyError: {e}")
+                session.rollback()
+                return False
+        return True
