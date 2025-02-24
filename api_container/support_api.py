@@ -1,5 +1,6 @@
 from reports_sql import Reports
 from helptks_sql import HelpTKs
+from chats_nosql import Chats
 import logging as logger
 import time
 from fastapi import FastAPI, File, UploadFile, BackgroundTasks, HTTPException
@@ -7,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import sys
 import os
+import mongomock
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'lib')))
 from lib.utils import time_to_string, get_test_engine
@@ -45,14 +47,20 @@ if os.getenv('TESTING'):
     test_engine = get_test_engine()
     reports_manager = Reports(engine=test_engine)
     help_tks_manager = HelpTKs(engine=test_engine)
+
+    client = mongomock.MongoClient()
+    chats_manager = Chats(test_client=client)
 else:
     reports_manager = Reports()
     help_tks_manager = HelpTKs()
+    chats_manager = Chats()
 
 VALID_REPORT_TYPES = {"ACCOUNT", "SERVICE"}
 REQUIRED_REPORT_FIELDS = {"title", "description", "complainant", "type", "target_identifier"}
 REQUIRED_HELP_TK_FIELDS = {"title", "description"}
 REQUIRED_HELP_TK_UPDATE_FIELDS = {"comment", "resolved"}
+REQUIRED_SUPPORT_CHAT_FIELDS = {"message", "tk_type", "support_agent"}
+
 starting_duration = time_to_string(time.time() - time_start)
 logger.info(f"Support API started in {starting_duration}")
 
@@ -145,3 +153,32 @@ def update_help_tk(uuid: str, body: dict):
     if not result:
         raise HTTPException(status_code=400, detail="Error while updating the report")
     return {"status": "ok"}
+
+@app.put("/chats/{uuid}")
+def update_support_chat(uuid: str, body: dict):
+    if not all([field in body for field in REQUIRED_SUPPORT_CHAT_FIELDS]):
+        missing_fields = REQUIRED_SUPPORT_CHAT_FIELDS - set(body.keys())
+        raise HTTPException(status_code=400, detail=f"Missing fields: {', '.join(missing_fields)}")
+    extra_fields = REQUIRED_SUPPORT_CHAT_FIELDS - set(body.keys())
+    if extra_fields:
+        raise HTTPException(status_code=400, detail=f"Extra fields: {', '.join(extra_fields)}")
+    if len(body["message"]) == 0:
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+    if body["tk_type"] not in {"HELP", "REPORT"}:
+        raise HTTPException(status_code=400, detail="Invalid tk_type, must be 'HELP' or 'REPORT'")
+    tks_manager = help_tks_manager if body["tk_type"] == "HELP" else reports_manager
+    if not tks_manager.get(uuid):
+        raise HTTPException(status_code=404, detail=f"{body['tk_type']} tk {uuid} not found")
+    
+    sender = "SUPPORT_AGENT" if body["support_agent"] else "USER"
+    if not chats_manager.insert_message(body["message"], sender, uuid):
+        raise HTTPException(status_code=400, detail="Error while sending the message")
+    return {"status": "ok"}
+
+@app.get("/chats/{uuid}")
+def get_chat_messages(uuid: str, limit: int, offset: int):
+    messages = chats_manager.get_messages(uuid, limit, offset)
+    if not messages:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    total_messages = chats_manager.count_messages(uuid)
+    return {"status": "ok", "messages": messages, "total_messages": total_messages}
