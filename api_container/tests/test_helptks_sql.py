@@ -8,7 +8,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'lib')))
 from helptks_sql import HelpTKs
-from lib.utils import get_actual_time
+from helptks_sql import get_actual_time
 
 # Run with the following command:
 # pytest SupportService/api_container/tests/test_helptks_sql.py
@@ -41,7 +41,7 @@ def test_create_table(helptks):
     helptks.create_table()
     assert helptks.help_tks is not None
     def test_insert_helptk(helptks, mocker):
-        mocker.patch('lib.utils.get_actual_time', return_value='2023-01-01 00:00:00')
+        mocker.patch('helptks_sql.get_actual_time', return_value='2023-01-01 00:00:00')
         helptk_uuid = helptks.insert(
             title='Test Title',
             description='Test Description',
@@ -50,7 +50,7 @@ def test_create_table(helptks):
         assert helptk_uuid is not None
 
 def test_get_helptk(helptks, mocker):
-    mocker.patch('lib.utils.get_actual_time', return_value='2023-01-01 00:00:00')
+    mocker.patch('helptks_sql.get_actual_time', return_value='2023-01-01 00:00:00')
     helptk_uuid = helptks.insert(
         title='Test Title',
         description='Test Description',
@@ -63,7 +63,7 @@ def test_get_helptk(helptks, mocker):
     assert helptk['requester'] == 'test_user'
     
 def test_delete_helptk(helptks, mocker):
-    mocker.patch('lib.utils.get_actual_time', return_value='2023-01-01 00:00:00')
+    mocker.patch('helptks_sql.get_actual_time', return_value='2023-01-01 00:00:00')
     helptk_uuid = helptks.insert(
         title='Test Title',
         description='Test Description',
@@ -75,7 +75,7 @@ def test_delete_helptk(helptks, mocker):
     assert helptk is None
 
 def test_get_helptks_by_user(helptks, mocker):
-    mocker.patch('lib.utils.get_actual_time', return_value='2023-01-01 00:00:00')
+    mocker.patch('helptks_sql.get_actual_time', return_value='2023-01-01 00:00:00')
     helptks.insert(
         title='Test Title 1',
         description='Test Description 1',
@@ -91,7 +91,7 @@ def test_get_helptks_by_user(helptks, mocker):
     assert len(helptk_list) == 2
     
 def test_update_helptk(helptks, mocker):
-    mocker.patch('lib.utils.get_actual_time', return_value='2023-01-01 00:00:00')
+    mocker.patch('helptks_sql.get_actual_time', return_value='2023-01-01 00:00:00')
     helptk_uuid = helptks.insert(
         title='Test Title',
         description='Test Description',
@@ -100,7 +100,7 @@ def test_update_helptk(helptks, mocker):
     assert helptk_uuid is not None
 
     # Update the helptk
-    mocker.patch('lib.utils.get_actual_time', return_value='2023-01-02 00:00:00')
+    mocker.patch('helptks_sql.get_actual_time', return_value='2023-01-02 00:00:00')
     result = helptks.update(helptk_uuid, comment='Test Comment', resolved=True)
     assert result is True
 
