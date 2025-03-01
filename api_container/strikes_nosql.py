@@ -94,8 +94,8 @@ class Strikes:
         strikes_profile = self.get(user_id)
         if not strikes_profile or len(strikes_profile['strikes']) == 0:
             return False
-        strikes_sum = strikes_profile['strikes'].sum('strike_value')
-        if strikes_sum < MAX_STRIKES:
+        strikes_sum = sum(strike['strike_value'] for strike in strikes_profile['strikes'])
+        if strikes_sum <= MAX_STRIKES:
             return False
         time_now = get_actual_time()
         self.collection.update_one({'user_id': user_id}, {
@@ -149,10 +149,10 @@ class Strikes:
         strikes_profile = self.get(user_id)
         if not strikes_profile or len(strikes_profile['strikes']) == 0:
             return False
-        if not report_tk in strikes_profile['strikes']:
+        if not report_tk in set(strike['report_tk'] for strike in strikes_profile['strikes']):
             logger.error(f"Report ticket '{report_tk}' not found in user '{user_id}' strikes")
             return False
-        strike = strikes_profile['strikes'][report_tk]
+        strike = next(strike for strike in strikes_profile['strikes'] if strike['report_tk'] == report_tk)
         if strike['ammended']:
             logger.error(f"Strike with report ticket '{report_tk}' already ammended")
             return False
