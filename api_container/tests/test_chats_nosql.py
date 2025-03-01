@@ -31,7 +31,7 @@ def chats(mongo_client):
     return Chats(test_client=mongo_client)
 
 def test_insert_message(chats, mocker):
-    mocker.patch('chats_nosql.get_actual_time', return_value=1672531200)  # 2023-01-01 00:00:00
+    mocker.patch('chats_nosql.get_actual_time', return_value="2023-01-01 00:00:00")
     chat_id = chats.insert_message(
         message_content='Hello, this is a test message.',
         message_sender='provider_1',
@@ -41,7 +41,7 @@ def test_insert_message(chats, mocker):
     assert chat_id == 'chat_1'
 
 def test_insert_message_existing_chat(chats, mocker):
-    mocker.patch('chats_nosql.get_actual_time', return_value=1672531200)  # 2023-01-01 00:00:00
+    mocker.patch('chats_nosql.get_actual_time', return_value="2023-01-01 00:00:00")
     chat_id_1 = chats.insert_message(
         message_content='Hello, this is a test message.',
         message_sender='provider_1',
@@ -58,7 +58,7 @@ def test_insert_message_existing_chat(chats, mocker):
     assert chat_id_1 == 'chat_1'
 
 def test_get_messages(chats, mocker):
-    mocker.patch('chats_nosql.get_actual_time', return_value=1672531200)  # 2023-01-01 00:00:00
+    mocker.patch('chats_nosql.get_actual_time', return_value="2023-01-01 00:00:00")
     chat_id = chats.insert_message(
         message_content='Hello, this is a test message.',
         message_sender='provider_1',
@@ -70,7 +70,7 @@ def test_get_messages(chats, mocker):
     assert messages[0]['message'] == 'Hello, this is a test message.'
 
 def test_get_multiple_messages(chats, mocker):
-    mocker.patch('chats_nosql.get_actual_time', return_value=1672531200)  # 2023-01-01 00:00:00
+    mocker.patch('chats_nosql.get_actual_time', return_value="2023-01-01 00:00:00")
     _ = chats.insert_message(
         message_content='Hello, this is a test message.',
         message_sender='provider_1',
@@ -89,7 +89,7 @@ def test_get_multiple_messages(chats, mocker):
     assert messages[0]['message'] != messages[1]['message']
 
 def test_delete_chat(chats, mocker):
-    mocker.patch('chats_nosql.get_actual_time', return_value=1672531200)  # 2023-01-01 00:00:00
+    mocker.patch('chats_nosql.get_actual_time', return_value="2023-01-01 00:00:00")
     chat_id = chats.insert_message(
         message_content='Hello, this is a test message.',
         message_sender='provider_1',
@@ -101,7 +101,7 @@ def test_delete_chat(chats, mocker):
     assert messages is None
 
 def test_count_messages(chats, mocker):
-    mocker.patch('chats_nosql.get_actual_time', return_value=1672531200)  # 2023-01-01 00:00:00
+    mocker.patch('chats_nosql.get_actual_time', return_value="2023-01-01 00:00:00")
     chats.insert_message(
         message_content='Hello, this is a test message.',
         message_sender='provider_1',
