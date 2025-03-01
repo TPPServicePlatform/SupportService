@@ -9,7 +9,7 @@ import sys
 import uuid
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'lib')))
-from lib.utils import get_actual_time, get_mongo_client
+from lib.utils import get_actual_time, get_mongo_client, get_time_plus_days
 
 HOUR = 60 * 60
 MINUTE = 60
@@ -18,6 +18,8 @@ MILLISECOND = 1_000
 MAX_STRIKES = 3
 STRIKE_VALUES = {"HIGH": 1.5, "MEDIUM": 1.0, "LOW": 0.5}
 AMMEND_STRIKE = 0.5
+
+SUSPEND_TIME = 90 # days
 
 # TODO: (General) -> Create tests for each method && add the required checks in each method
 
@@ -28,6 +30,7 @@ class Strikes:
     - user_id: str (unique) [pk] The id of the user
     - strikes: list(dict) The list of strikes
     - suspensions: list(dict) The list of suspensions (dates)
+    - suspension_ends: int The timestamp of the last suspension
     - created_at: int The timestamp of the creation of the strikes
     - updated_at: int The timestamp of the last update of the strikes
 
@@ -73,6 +76,7 @@ class Strikes:
                 'user_id': user_id,
                 'strikes': [],
                 'suspensions': [],
+                'suspension_ends': None,
                 'created_at': get_actual_time(),
                 'updated_at': get_actual_time()
             })
@@ -107,7 +111,8 @@ class Strikes:
             },
             '$set': {
                 'strikes': [],
-                'updated_at': time_now
+                'updated_at': time_now,
+                'suspension_ends': get_time_plus_days(SUSPEND_TIME)
             }
         })
         return True
@@ -170,6 +175,19 @@ class Strikes:
             }
         })
         return True
+    
+    def is_suspended(self, user_id: str) -> bool:
+        strikes_profile = self.get(user_id)
+        if not strikes_profile or len(strikes_profile['suspensions']) == 0:
+            return False
+        suspension_ends = strikes_profile['suspension_ends']
+        if not suspension_ends:
+            return True
+        return get_actual_time() < suspension_ends
+    
+    def get_all_suspendend(self) -> List[Dict]:
+        actual_time = get_actual_time()
+        return list(user['user_id'] for user in self.collection.find({'suspension_ends': {'$gt': actual_time}}, {'user_id': 1}))
 
         
         

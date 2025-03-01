@@ -1,6 +1,7 @@
 from reports_sql import Reports
 from helptks_sql import HelpTKs
 from chats_nosql import Chats
+from strikes_nosql import Strikes
 import logging as logger
 import time
 from fastapi import FastAPI, File, UploadFile, BackgroundTasks, HTTPException
@@ -50,16 +51,21 @@ if os.getenv('TESTING'):
 
     client = mongomock.MongoClient()
     chats_manager = Chats(test_client=client)
+    strikes_manager = Strikes(test_client=client)
 else:
     reports_manager = Reports()
     help_tks_manager = HelpTKs()
     chats_manager = Chats()
+    strikes_manager = Strikes()
 
 VALID_REPORT_TYPES = {"ACCOUNT", "SERVICE"}
 REQUIRED_REPORT_FIELDS = {"title", "description", "complainant", "type", "target_identifier"}
 REQUIRED_HELP_TK_FIELDS = {"title", "description"}
 REQUIRED_HELP_TK_UPDATE_FIELDS = {"comment", "resolved"}
 REQUIRED_SUPPORT_CHAT_FIELDS = {"message", "tk_type", "support_agent"}
+VALID_STRIKE_TYPES = {"HIGH", "MEDIUM", "LOW"}
+REQUIRED_STRIKE_FIELDS = {"user_id", "report_tk", "strike_type", "strike_reason"}
+REQUIRED_AMMEND_STRIKE_FIELDS = {"user_id", "report_tk", "ammend_reason"}
 
 starting_duration = time_to_string(time.time() - time_start)
 logger.info(f"Support API started in {starting_duration}")
@@ -182,3 +188,30 @@ def get_chat_messages(uuid: str, limit: int, offset: int):
         raise HTTPException(status_code=404, detail="Chat not found")
     total_messages = chats_manager.count_messages(uuid)
     return {"status": "ok", "messages": messages, "total_messages": total_messages}
+
+@app.put("/strikes/{user_id}")
+def add_strike(user_id: str, body: dict):
+    if not all([field in body for field in REQUIRED_STRIKE_FIELDS]):
+        missing_fields = REQUIRED_STRIKE_FIELDS - set(body.keys())
+        raise HTTPException(status_code=400, detail=f"Missing fields: {', '.join(missing_fields)}")
+    extra_fields = REQUIRED_STRIKE_FIELDS - set(body.keys())
+    if extra_fields:
+        raise HTTPException(status_code=400, detail=f"Extra fields: {', '.join(extra_fields)}")
+    if body["strike_type"] not in VALID_STRIKE_TYPES:
+        raise HTTPException(status_code=400, detail=f"Invalid strike type, must be one of {', '.join(VALID_STRIKE_TYPES)}")
+    if len(body["strike_reason"]) == 0:
+        raise HTTPException(status_code=400, detail="Strike reason cannot be empty")
+    
+    report = reports_manager.get(body["report_tk"])
+    if not report:
+        raise HTTPException(status_code=404, detail=f"Report ticket {body['report_tk']} not found")
+    if user_id not in {report["complainant"], report["target_identifier"]}:
+        raise HTTPException(status_code=400, detail="User not involved in the report")
+    
+    result_suspension = strikes_manager.add_strike(user_id, **body)
+    if result_suspension is None:
+        raise HTTPException(status_code=400, detail="Error while adding the strike")
+    if result_suspension is False:
+        return {"status": "ok", "suspension": False}
+    return {"status": "ok", "suspension": True}
+    
