@@ -70,18 +70,18 @@ class Strikes:
     def _create_collection(self):
         self.collection.create_index([('uuid', ASCENDING)], unique=True)
     
-    def is_suspended(self, user_id: str) -> bool:
+    def check_suspension(self, user_id: str) -> Optional[str]:
         strikes_profile = self.get(user_id)
         if not strikes_profile or len(strikes_profile['suspensions']) == 0:
-            return False
+            return None
         suspension_ends = strikes_profile['suspension_ends']
         if not suspension_ends:
-            return True
-        return get_actual_time() < suspension_ends
+            return None
+        return None if get_actual_time() < suspension_ends else suspension_ends
     
-    def get_all_suspendend(self) -> List[Dict]:
+    def get_all_suspendend(self) -> set[Dict]:
         actual_time = get_actual_time()
-        return list(user['user_id'] for user in self.collection.find({'suspension_ends': {'$gt': actual_time}}, {'user_id': 1}))
+        return set(user['user_id'] for user in self.collection.find({'suspension_ends': {'$gt': actual_time}}, {'user_id': 1}))
 
         
         
