@@ -12,7 +12,7 @@ import os
 import mongomock
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'lib')))
-from lib.utils import time_to_string, get_test_engine
+from lib.utils import sentry_init, time_to_string, get_test_engine
 
 time_start = time.time()
 
@@ -25,6 +25,8 @@ DEBUG_MODE = os.getenv("DEBUG_MODE").title() == "True"
 if DEBUG_MODE:
     logger.getLogger().setLevel(logger.DEBUG)
 logger.info("DEBUG_MODE: " + str(DEBUG_MODE))
+
+sentry_init()
 
 app = FastAPI(
     title="Support API",
