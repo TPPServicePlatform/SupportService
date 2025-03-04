@@ -6,3 +6,4 @@ requests
 SQLAlchemy
 pymongo[srv]
 mongomock
+firebase-admin
