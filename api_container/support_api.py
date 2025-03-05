@@ -1,3 +1,4 @@
+from mobile_token_nosql import MobileToken
 from reports_sql import Reports
 from helptks_sql import HelpTKs
 from chats_nosql import Chats
@@ -54,11 +55,13 @@ if os.getenv('TESTING'):
     client = mongomock.MongoClient()
     chats_manager = Chats(test_client=client)
     strikes_manager = Strikes(test_client=client)
+    mobile_token_manager = MobileToken(test_client=client)
 else:
     reports_manager = Reports()
     help_tks_manager = HelpTKs()
     chats_manager = Chats()
     strikes_manager = Strikes()
+    mobile_token_manager = MobileToken()
 
 VALID_REPORT_TYPES = {"ACCOUNT", "SERVICE"}
 REQUIRED_REPORT_FIELDS = {"title", "description", "complainant", "type", "target_identifier"}
@@ -161,7 +164,7 @@ def update_help_tk(uuid: str, body: dict):
     if not result:
         raise HTTPException(status_code=400, detail="Error while updating the report")
     user_id = help_tks_manager.get(uuid)["requester"]
-    send_notification(user_id, "Help Ticket Updated", f"Your help ticket {uuid} has been updated")
+    send_notification(mobile_token_manager, user_id, "Help Ticket Updated", f"Your help ticket {uuid} has been updated")
     return {"status": "ok"}
 
 @app.put("/chats/{uuid}")
@@ -186,7 +189,7 @@ def update_support_chat(uuid: str, body: dict):
         raise HTTPException(status_code=400, detail="Error while sending the message")
     if sender == "SUPPORT_AGENT":
         user_id = tks_manager.get(uuid)[user_id_field]
-        send_notification(user_id, "New Support Chat Message", f"New message in your {body['tk_type']} chat {uuid}")
+        send_notification(mobile_token_manager, user_id, "New Support Chat Message", f"New message in your {body['tk_type']} chat {uuid}")
     return {"status": "ok"}
 
 @app.get("/chats/{uuid}")
@@ -219,8 +222,8 @@ def add_strike(user_id: str, body: dict):
     result_suspension = strikes_manager.add_strike(user_id, **body)
     if result_suspension is None:
         raise HTTPException(status_code=400, detail="Error while adding the strike")
-    send_notification(user_id, "New Strike", f"You have received a new {body['strike_type']} strike")
+    send_notification(mobile_token_manager, user_id, "New Strike", f"You have received a new {body['strike_type']} strike")
     if result_suspension:
-        send_notification(user_id, "Account Suspended", "Your account has been suspended for some time")
+        send_notification(mobile_token_manager, user_id, "Account Suspended", "Your account has been suspended for some time")
     return {"status": "ok", "suspension": result_suspension}
     
