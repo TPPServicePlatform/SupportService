@@ -1,4 +1,4 @@
-from mobile_token_nosql import MobileToken
+from mobile_token_nosql import MobileToken, send_notification
 from reports_sql import Reports
 from helptks_sql import HelpTKs
 from chats_nosql import Chats
@@ -13,7 +13,7 @@ import os
 import mongomock
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'lib')))
-from lib.utils import send_notification, sentry_init, time_to_string, get_test_engine
+from lib.utils import sentry_init, time_to_string, get_test_engine
 
 time_start = time.time()
 
