@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from typing import Optional, Union
 from sqlalchemy import MetaData, Table, Column, String, Boolean
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
@@ -29,6 +30,8 @@ class Reports:
     - description: str
     - complainant: str
     - created_at: datetime
+    - updated_at: datetime
+    - resolved: bool
     """
 
     def __init__(self, engine=None):
@@ -38,6 +41,11 @@ class Reports:
         self.metadata = MetaData()
         self.metadata.bind = self.engine
         self.Session = sessionmaker(bind=self.engine)
+        
+    def drop(self):
+        with Session(self.engine) as session:
+            self.reports.drop(self.engine)
+            session.commit()
 
     def create_table(self):
         with Session(self.engine) as session:
@@ -51,7 +59,9 @@ class Reports:
                 Column('title', String),
                 Column('description', String),
                 Column('complainant', String),
-                Column('created_at', String)
+                Column('created_at', String),
+                Column('updated_at', String),
+                Column('resolved', Boolean)
             )
             metadata.create_all(self.engine)
             session.commit()
@@ -65,7 +75,9 @@ class Reports:
                     title=title,
                     description=description,
                     complainant=complainant,
-                    created_at=get_actual_time()
+                    created_at=get_actual_time(),
+                    updated_at=get_actual_time(),
+                    resolved=False
                 ).returning(self.reports.c.uuid)
                 result = session.execute(query)
                 inserted_uuid = result.scalar() # TODO: Check if this works
@@ -109,3 +121,85 @@ class Reports:
                 session.rollback()
                 return False
         return True
+    
+    def resolve(self, uuid: str) -> bool:
+        with Session(self.engine) as session:
+            try:
+                query = self.reports.update().where(self.reports.c.uuid == uuid).values(
+                    resolved=True,
+                    updated_at=get_actual_time()
+                )
+                session.execute(query)
+                session.commit()
+            except SQLAlchemyError as e:
+                logger.error(f"SQLAlchemyError: {e}")
+                session.rollback()
+                return False
+        return True
+    
+    def _get_new_tks(self, from_date: str, to_date: str) -> int:
+        with self.engine.connect() as connection:
+            query = self.reports.select().where(
+                (self.reports.c.created_at >= from_date) & 
+                (self.reports.c.created_at <= to_date)
+            )
+            result = connection.execute(query)
+            return result.fetchall()
+        
+    def _get_resolved_tks(self, from_date: str, to_date: str) -> int:
+        with self.engine.connect() as connection:
+            query = self.reports.select().where(
+                (self.reports.c.updated_at >= from_date) & 
+                (self.reports.c.updated_at <= to_date) &
+                (self.reports.c.resolved == True)
+            )
+            result = connection.execute(query)
+            return result.fetchall()
+    
+    def last_month_stats(self) -> Optional[dict]:
+        """
+        Stats to collect:
+        - new tks this month and % difference with last month
+        - resolved tks this month and % difference with last month
+        """
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        this_month = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+        previous_month = (datetime.now() - timedelta(days=60)).strftime('%Y-%m-%d %H:%M:%S')
+        
+        perc_diff = lambda new, last: round(((new - last) / last) if last != 0 else 1, 2)
+        
+        new_this_month = len(self._get_new_tks(this_month, now))
+        new_last_month = len(self._get_new_tks(previous_month, this_month))
+        perc_diff_new = perc_diff(new_this_month, new_last_month)
+        
+        resolved_this_month = len(self._get_resolved_tks(this_month, now))
+        resolved_last_month = len(self._get_resolved_tks(previous_month, this_month))
+        perc_diff_resolved = perc_diff(resolved_this_month, resolved_last_month)
+        
+        return {
+            "new_this_month": new_this_month,
+            "perc_diff_new": perc_diff_new,
+            "resolved_this_month": resolved_this_month,
+            "perc_diff_resolved": perc_diff_resolved
+        }
+        
+    def tickets_by_day(self, from_date: str, to_date: str) -> Optional[dict]:
+        """
+        Stats to collect:
+        - new tks by day
+        - resolved tks by day
+        format:
+        { <date>: { "new": <int>, "resolved": <int> } }
+        """
+        all_tks = self._get_new_tks(from_date, to_date)
+        resolved_tks = self._get_resolved_tks(from_date, to_date)
+        results = {}
+        for tk in all_tks:
+            created_date = tk['created_at'].split(' ')[0]
+            results[created_date] = results.get(created_date, {"new": 0, "resolved": 0})
+            results[created_date]["new"] += 1
+        for tk in resolved_tks:
+            updated_date = tk['updated_at'].split(' ')[0]
+            results[updated_date] = results.get(updated_date, {"new": 0, "resolved": 0})
+            results[updated_date]["resolved"] += 1
+        return results

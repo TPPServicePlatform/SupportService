@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from typing import Optional, Union
 from sqlalchemy import MetaData, Table, Column, String, Boolean
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
@@ -143,3 +144,73 @@ class HelpTKs:
                 session.rollback()
                 return False
         return True
+    
+    def _get_new_tks(self, from_date: str, to_date: str) -> int:
+        with self.engine.connect() as connection:
+            query = self.help_tks.select().where(
+                (self.help_tks.c.created_at >= from_date) & 
+                (self.help_tks.c.created_at <= to_date)
+            )
+            result = connection.execute(query)
+            return result.fetchall()
+        
+    def _get_resolved_tks(self, from_date: str, to_date: str) -> int:
+        with self.engine.connect() as connection:
+            query = self.help_tks.select().where(
+                (self.help_tks.c.updated_at >= from_date) & 
+                (self.help_tks.c.updated_at <= to_date) &
+                (self.help_tks.c.resolved == True)
+            )
+            result = connection.execute(query)
+            return result.fetchall()
+    
+    def last_month_stats(self) -> Optional[dict]:
+        """
+        Stats to collect:
+        - new tks this month and % difference with last month
+        - resolved tks this month and % difference with last month
+        """
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        this_month = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+        previous_month = (datetime.now() - timedelta(days=60)).strftime('%Y-%m-%d %H:%M:%S')
+        
+        perc_diff = lambda new, last: round(((new - last) / last) if last != 0 else 1, 2)
+        
+        new_this_month = len(self._get_new_tks(this_month, now))
+        new_last_month = len(self._get_new_tks(previous_month, this_month))
+        perc_diff_new = perc_diff(new_this_month, new_last_month)
+        
+        resolved_this_month = len(self._get_resolved_tks(this_month, now))
+        resolved_last_month = len(self._get_resolved_tks(previous_month, this_month))
+        perc_diff_resolved = perc_diff(resolved_this_month, resolved_last_month)
+        
+        return {
+            "new_this_month": new_this_month,
+            "perc_diff_new": perc_diff_new,
+            "resolved_this_month": resolved_this_month,
+            "perc_diff_resolved": perc_diff_resolved
+        }
+        
+    def tickets_by_day(self, from_date: str, to_date: str) -> Optional[dict]:
+        """
+        Stats to collect:
+        - new tks by day
+        - resolved tks by day
+        format:
+        { <date>: { "new": <int>, "resolved": <int> } }
+        """
+        all_tks = self._get_new_tks(from_date, to_date)
+        resolved_tks = self._get_resolved_tks(from_date, to_date)
+        results = {}
+        for tk in all_tks:
+            created_date = tk['created_at'].split(' ')[0]
+            results[created_date] = results.get(created_date, {"new": 0, "resolved": 0})
+            results[created_date]["new"] += 1
+        for tk in resolved_tks:
+            updated_date = tk['updated_at'].split(' ')[0]
+            results[updated_date] = results.get(updated_date, {"new": 0, "resolved": 0})
+            results[updated_date]["resolved"] += 1
+        return results
+            
+        
+        
