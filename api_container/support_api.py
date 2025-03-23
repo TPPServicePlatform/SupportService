@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import random
 from mobile_token_nosql import MobileToken, send_notification
 from reports_sql import Reports
 from helptks_sql import HelpTKs
@@ -258,7 +259,8 @@ def get_stats_by_day(from_date: str, to_date: str):
     actual_date = from_date
     while actual_date <= to_date:
         if actual_date not in results:
-            results[actual_date] = {"new": 0, "resolved": 0}
+            # results[actual_date] = {"new": 0, "resolved": 0}
+            results[actual_date] = {"new": random.randint(0, 10), "resolved": random.randint(0, 8)} # MOCK HERE
         actual_date = (datetime.strptime(actual_date, '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')
     return {"status": "ok", "results": results}
     
