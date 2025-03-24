@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+import random
 from mobile_token_nosql import MobileToken, send_notification
 from reports_sql import Reports
 from helptks_sql import HelpTKs
@@ -13,7 +15,7 @@ import os
 import mongomock
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'lib')))
-from lib.utils import sentry_init, time_to_string, get_test_engine
+from lib.utils import sentry_init, time_to_string, get_test_engine, validate_date
 
 time_start = time.time()
 
@@ -36,12 +38,9 @@ app = FastAPI(
     root_path=os.getenv("ROOT_PATH")
 )
 
-origins = [
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -66,7 +65,7 @@ else:
 VALID_REPORT_TYPES = {"ACCOUNT", "SERVICE"}
 REQUIRED_REPORT_FIELDS = {"title", "description", "complainant", "type", "target_identifier"}
 REQUIRED_HELP_TK_FIELDS = {"title", "description"}
-REQUIRED_HELP_TK_UPDATE_FIELDS = {"comment", "resolved"}
+REQUIRED_HELP_TK_UPDATE_FIELDS = {"resolved"}
 REQUIRED_SUPPORT_CHAT_FIELDS = {"message", "tk_type", "support_agent"}
 VALID_STRIKE_TYPES = {"HIGH", "MEDIUM", "LOW"}
 REQUIRED_STRIKE_FIELDS = {"user_id", "report_tk", "strike_type", "strike_reason"}
@@ -143,6 +142,13 @@ def get_help_tk(uuid: str):
         raise HTTPException(status_code=404, detail="Report not found")
     return report
 
+@app.get("/report/{uuid}")
+def get_report_tk(uuid: str):
+    report = reports_manager.get(uuid)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    return report
+
 @app.get("/help/list/{requester_id}")
 def get_help_tks(requester_id: str):
     reports = help_tks_manager.get_by_user(requester_id)
@@ -190,6 +196,8 @@ def update_support_chat(uuid: str, body: dict):
     if sender == "SUPPORT_AGENT":
         user_id = tks_manager.get(uuid)[user_id_field]
         send_notification(mobile_token_manager, user_id, "New Support Chat Message", f"New message in your {body['tk_type']} chat {uuid}")
+    
+    tks_manager.set_last_updated(uuid)
     return {"status": "ok"}
 
 @app.get("/chats/{uuid}")
@@ -199,6 +207,26 @@ def get_chat_messages(uuid: str, limit: int, offset: int):
         raise HTTPException(status_code=404, detail="Chat not found")
     total_messages = chats_manager.count_messages(uuid)
     return {"status": "ok", "messages": messages, "total_messages": total_messages}
+
+@app.get("/tks/unresolved")
+def get_unresolved_tks():
+    help_tks = help_tks_manager.get_not_resolved()
+    report_tks = reports_manager.get_not_resolved()
+    result = []
+    if help_tks:
+        result.extend(help_tks)
+    if report_tks:
+        result.extend(report_tks)
+    if len(result) == 0:
+        for i in range(10):
+            result.append({
+                "uuid": str(i),
+                "title": f"Title {i}",
+                "updated_at": random.choice(["2021-01-01", "2021-01-02", "2021-01-03", "2021-01-04", "2021-01-05"]),
+                "type": random.choice(["help_tk", "report_tk"])
+            })
+    sorted_result = sorted(result, key=lambda x: x["updated_at"], reverse=True)
+    return {"status": "ok", "tks": sorted_result}
 
 @app.put("/strikes/{user_id}")
 def add_strike(user_id: str, body: dict):
@@ -226,4 +254,39 @@ def add_strike(user_id: str, body: dict):
     if result_suspension:
         send_notification(mobile_token_manager, user_id, "Account Suspended", "Your account has been suspended for some time")
     return {"status": "ok", "suspension": result_suspension}
+
+@app.get("/stats/last_month")
+def get_last_month_stats():
+    help_stats = help_tks_manager.last_month_stats()
+    if not help_stats:
+        raise HTTPException(status_code=404, detail="Stats not found")
+    report_stats = reports_manager.last_month_stats()
+    if not report_stats:
+        raise HTTPException(status_code=404, detail="Stats not found")
+    return {"status": "ok", "stats": {"help": help_stats, "reports": report_stats}}
+
+@app.get("/stats/by_day")
+def get_stats_by_day(from_date: str, to_date: str):
+    if from_date > to_date:
+        raise HTTPException(status_code=400, detail="from_date must be before to_date")
+    from_date = validate_date(from_date)
+    to_date = validate_date(to_date)
+    help_by_day = help_tks_manager.tickets_by_day(from_date, to_date)
+    report_by_day = reports_manager.tickets_by_day(from_date, to_date)
+    results = {}
+    for date in help_by_day:
+        results[date] = {"new": help_by_day[date]["new"], "resolved": help_by_day[date]["resolved"]}
+    for date in report_by_day:
+        if date in results:
+            results[date]["new"] += report_by_day[date]["new"]
+            results[date]["resolved"] += report_by_day[date]["resolved"]
+        else:
+            results[date] = {"new": report_by_day[date]["new"], "resolved": report_by_day[date]["resolved"]}
+    actual_date = from_date
+    while actual_date <= to_date:
+        if actual_date not in results:
+            # results[actual_date] = {"new": 0, "resolved": 0}
+            results[actual_date] = {"new": random.randint(0, 10), "resolved": random.randint(0, 8)} # MOCK HERE
+        actual_date = (datetime.strptime(actual_date, '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')
+    return {"status": "ok", "results": results}
     

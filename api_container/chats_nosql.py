@@ -25,6 +25,7 @@ class Chats:
     - messages (List[Dict]): The list of messages
     - created_at (int): The timestamp of the creation of the chat
     - last_message_at (int): The timestamp of the last message sent in the chat
+    - resolved (bool): If the chat is resolved
 
     Messages structure:
     - sender (str): Name of the sender, it can be "User" or "Support Agent"
@@ -96,7 +97,8 @@ class Chats:
                         'sent_at': actual_time
                     }],
                     'created_at': actual_time,
-                    'last_message_at': actual_time
+                    'last_message_at': actual_time,
+                    "resolved": False
                 })
         
         return chat_id

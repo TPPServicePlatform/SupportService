@@ -60,3 +60,10 @@ def sentry_init():
             "continuous_profiling_auto_start": True,
         },
     )
+    
+def validate_date(date: str) -> str:
+    try:
+        datetime.datetime.strptime(date, '%Y-%m-%d')
+        return date
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use 'YYYY-MM-DD'")
