@@ -38,9 +38,6 @@ app = FastAPI(
     root_path=os.getenv("ROOT_PATH")
 )
 
-origins = [
-]
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -68,7 +65,7 @@ else:
 VALID_REPORT_TYPES = {"ACCOUNT", "SERVICE"}
 REQUIRED_REPORT_FIELDS = {"title", "description", "complainant", "type", "target_identifier"}
 REQUIRED_HELP_TK_FIELDS = {"title", "description"}
-REQUIRED_HELP_TK_UPDATE_FIELDS = {"comment", "resolved"}
+REQUIRED_HELP_TK_UPDATE_FIELDS = {"resolved"}
 REQUIRED_SUPPORT_CHAT_FIELDS = {"message", "tk_type", "support_agent"}
 VALID_STRIKE_TYPES = {"HIGH", "MEDIUM", "LOW"}
 REQUIRED_STRIKE_FIELDS = {"user_id", "report_tk", "strike_type", "strike_reason"}
@@ -145,6 +142,13 @@ def get_help_tk(uuid: str):
         raise HTTPException(status_code=404, detail="Report not found")
     return report
 
+@app.get("/report/{uuid}")
+def get_report_tk(uuid: str):
+    report = reports_manager.get(uuid)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    return report
+
 @app.get("/help/list/{requester_id}")
 def get_help_tks(requester_id: str):
     reports = help_tks_manager.get_by_user(requester_id)
@@ -192,6 +196,8 @@ def update_support_chat(uuid: str, body: dict):
     if sender == "SUPPORT_AGENT":
         user_id = tks_manager.get(uuid)[user_id_field]
         send_notification(mobile_token_manager, user_id, "New Support Chat Message", f"New message in your {body['tk_type']} chat {uuid}")
+    
+    tks_manager.set_last_updated(uuid)
     return {"status": "ok"}
 
 @app.get("/chats/{uuid}")
@@ -201,6 +207,26 @@ def get_chat_messages(uuid: str, limit: int, offset: int):
         raise HTTPException(status_code=404, detail="Chat not found")
     total_messages = chats_manager.count_messages(uuid)
     return {"status": "ok", "messages": messages, "total_messages": total_messages}
+
+@app.get("/tks/unresolved")
+def get_unresolved_tks():
+    help_tks = help_tks_manager.get_not_resolved()
+    report_tks = reports_manager.get_not_resolved()
+    result = []
+    if help_tks:
+        result.extend(help_tks)
+    if report_tks:
+        result.extend(report_tks)
+    if len(result) == 0:
+        for i in range(10):
+            result.append({
+                "uuid": str(i),
+                "title": f"Title {i}",
+                "updated_at": random.choice(["2021-01-01", "2021-01-02", "2021-01-03", "2021-01-04", "2021-01-05"]),
+                "type": random.choice(["help_tk", "report_tk"])
+            })
+    sorted_result = sorted(result, key=lambda x: x["updated_at"], reverse=True)
+    return {"status": "ok", "tks": sorted_result}
 
 @app.put("/strikes/{user_id}")
 def add_strike(user_id: str, body: dict):

@@ -99,7 +99,18 @@ class Reports:
             result = connection.execute(query)
             report = result.fetchone()
             if report is None:
-                return None
+                # return None
+                return {
+                    "uuid": "mock_uuid", # MOCK HERE
+                    "type": "ACCOUNT",
+                    "target_identifier": "mock_target_identifier",
+                    "title": "mock_title",
+                    "description": "mock_description",
+                    "complainant": "mock_complainant",
+                    "created_at": "2021-08-01 00:00:00",
+                    "updated_at": "2021-08-01 00:00:00",
+                    "resolved": False
+                }
             return report._asdict()
     
     def get_by_target(self, type: str, target_identifier: str) -> Optional[list[dict]]:
@@ -210,3 +221,35 @@ class Reports:
             results[updated_date] = results.get(updated_date, {"new": 0, "resolved": 0})
             results[updated_date]["resolved"] += 1
         return results
+    
+    def set_last_updated(self, uuid: str) -> bool:
+        with Session(self.engine) as session:
+            try:
+                query = self.reports.update().where(self.reports.c.uuid == uuid).values(
+                    updated_at=get_actual_time()
+                )
+                session.execute(query)
+                session.commit()
+            except SQLAlchemyError as e:
+                logger.error(f"SQLAlchemyError: {e}")
+                session.rollback()
+                return False
+        return True
+    
+    def get_not_resolved(self) -> Optional[list[dict]]:
+        with self.engine.connect() as connection:
+            query = self.reports.select().where(self.reports.c.resolved == False)
+            result = connection.execute(query)
+            tks = result.fetchall()
+            if tks is None:
+                return None
+            tks_list = []
+            for tk in tks:
+                dict_tk = tk._asdict()
+                tks_list.append({
+                    "uuid": dict_tk['uuid'],
+                    "title": dict_tk['title'],
+                    "updated_at": dict_tk['updated_at'],
+                    "type": "report_tk"
+                })
+            return tks_list

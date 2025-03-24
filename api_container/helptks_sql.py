@@ -29,7 +29,6 @@ class HelpTKs:
     - description: str
     - requester: str
     - created_at: datetime
-    - comments: list[dict]
     - resolved: bool
     - updated_at: datetime
     """
@@ -53,7 +52,6 @@ class HelpTKs:
                 Column('description', String),
                 Column('requester', String),
                 Column('created_at', String),
-                Column('comments', String),
                 Column('resolved', Boolean),
                 Column('updated_at', String)
             )
@@ -68,7 +66,6 @@ class HelpTKs:
                     description=description,
                     requester=requester,
                     created_at=get_actual_time(),
-                    comments="[]",
                     resolved=False,
                     updated_at=get_actual_time()
                 ).returning(self.help_tks.c.uuid)
@@ -93,7 +90,6 @@ class HelpTKs:
             if tk is None:
                 return None
             dict_tk = tk._asdict()
-            dict_tk['comments'] = eval(dict_tk['comments'])
             return dict_tk
         
     def delete(self, uuid: str) -> bool:
@@ -118,23 +114,16 @@ class HelpTKs:
             tks_list = []
             for tk in tks:
                 dict_tk = tk._asdict()
-                dict_tk['comments'] = eval(dict_tk['comments'])
                 tks_list.append(dict_tk)
             return tks_list
     
-    def update(self, uuid: str, comment: str, resolved: bool) -> bool:
+    def update(self, uuid: str, resolved: bool) -> bool:
         now = get_actual_time()
         if not self.get(uuid):
             return False
-        previous_comments = self.get(uuid)['comments']
-        previous_comments.append({
-            "comment": comment,
-            "created_at": now
-        })
         with Session(self.engine) as session:
             try:
                 query = self.help_tks.update().where(self.help_tks.c.uuid == uuid).values(
-                    comments=str(previous_comments),
                     resolved=resolved,
                     updated_at=now
                 )
@@ -218,6 +207,36 @@ class HelpTKs:
             results[updated_date] = results.get(updated_date, {"new": 0, "resolved": 0})
             results[updated_date]["resolved"] += 1
         return results
-            
-        
+    
+    def set_last_updated(self, uuid: str) -> bool:
+        with Session(self.engine) as session:
+            try:
+                query = self.help_tks.update().where(self.help_tks.c.uuid == uuid).values(
+                    updated_at=get_actual_time()
+                )
+                session.execute(query)
+                session.commit()
+            except SQLAlchemyError as e:
+                logger.error(f"SQLAlchemyError: {e}")
+                session.rollback()
+                return False
+        return True
+    
+    def get_not_resolved(self) -> Optional[list[dict]]:
+        with self.engine.connect() as connection:
+            query = self.help_tks.select().where(self.help_tks.c.resolved == False)
+            result = connection.execute(query)
+            tks = result.fetchall()
+            if tks is None:
+                return None
+            tks_list = []
+            for tk in tks:
+                dict_tk = tk._asdict()
+                tks_list.append({
+                    "uuid": dict_tk['uuid'],
+                    "title": dict_tk['title'],
+                    "updated_at": dict_tk['updated_at'],
+                    "type": "help_tk"
+                })
+            return tks_list
         
