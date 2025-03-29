@@ -111,7 +111,7 @@ class Chats:
         result = self.collection.delete_one({'uuid': uuid})
         return result.deleted_count > 0
 
-    def get_messages(self, chat_id: str, limit: int, offset: int) -> Optional[List[Dict]]:
+    def get_messages(self, chat_id: str) -> Optional[List[Dict]]:
         chat_id = self._chat_exists(chat_id)
         if not chat_id:
             return None
@@ -119,8 +119,6 @@ class Chats:
             {'$match': {'uuid': chat_id}},
             {'$unwind': '$messages'},
             {'$sort': {'messages.sent_at': ASCENDING}},
-            {'$skip': offset},
-            {'$limit': limit},
             {'$group': {
                 '_id': '$_id',
                 'messages': {'$push': '$messages'}

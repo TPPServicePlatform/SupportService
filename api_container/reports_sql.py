@@ -99,18 +99,18 @@ class Reports:
             result = connection.execute(query)
             report = result.fetchone()
             if report is None:
-                # return None
-                return {
-                    "uuid": "mock_uuid", # MOCK HERE
-                    "type": "ACCOUNT",
-                    "target_identifier": "mock_target_identifier",
-                    "title": "mock_title",
-                    "description": "mock_description",
-                    "complainant": "mock_complainant",
-                    "created_at": "2021-08-01 00:00:00",
-                    "updated_at": "2021-08-01 00:00:00",
-                    "resolved": False
-                }
+                return None
+                # return {
+                #     "uuid": "mock_uuid", # MOCK HERE
+                #     "type": "ACCOUNT",
+                #     "target_identifier": "mock_target_identifier",
+                #     "title": "mock_title",
+                #     "description": "mock_description",
+                #     "complainant": "mock_complainant",
+                #     "created_at": "2021-08-01 00:00:00",
+                #     "updated_at": "2021-08-01 00:00:00",
+                #     "resolved": False
+                # }
             return report._asdict()
     
     def get_by_target(self, type: str, target_identifier: str) -> Optional[list[dict]]:
@@ -156,7 +156,12 @@ class Reports:
                 (self.reports.c.created_at <= to_date)
             )
             result = connection.execute(query)
-            return result.fetchall()
+            tks = result.fetchall()
+            tks_list = []
+            for tk in tks:
+                dict_tk = tk._asdict()
+                tks_list.append(dict_tk)
+            return tks_list
         
     def _get_resolved_tks(self, from_date: str, to_date: str) -> int:
         with self.engine.connect() as connection:
@@ -166,7 +171,12 @@ class Reports:
                 (self.reports.c.resolved == True)
             )
             result = connection.execute(query)
-            return result.fetchall()
+            tks = result.fetchall()
+            tks_list = []
+            for tk in tks:
+                dict_tk = tk._asdict()
+                tks_list.append(dict_tk)
+            return tks_list
     
     def last_month_stats(self) -> Optional[dict]:
         """

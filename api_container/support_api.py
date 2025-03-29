@@ -173,7 +173,7 @@ def update_help_tk(uuid: str, body: dict):
     send_notification(mobile_token_manager, user_id, "Help Ticket Updated", f"Your help ticket {uuid} has been updated")
     return {"status": "ok"}
 
-@app.put("/chats/{uuid}")
+@app.put("/chats/newmsg/{uuid}")
 def update_support_chat(uuid: str, body: dict):
     if not all([field in body for field in REQUIRED_SUPPORT_CHAT_FIELDS]):
         missing_fields = REQUIRED_SUPPORT_CHAT_FIELDS - set(body.keys())
@@ -200,13 +200,12 @@ def update_support_chat(uuid: str, body: dict):
     tks_manager.set_last_updated(uuid)
     return {"status": "ok"}
 
-@app.get("/chats/{uuid}")
-def get_chat_messages(uuid: str, limit: int, offset: int):
-    messages = chats_manager.get_messages(uuid, limit, offset)
+@app.get("/chats/all/{uuid}")
+def get_chat_messages(uuid: str):
+    messages = chats_manager.get_messages(uuid)
     if not messages:
-        raise HTTPException(status_code=404, detail="Chat not found")
-    total_messages = chats_manager.count_messages(uuid)
-    return {"status": "ok", "messages": messages, "total_messages": total_messages}
+        messages = []
+    return {"status": "ok", "messages": messages}
 
 @app.get("/tks/unresolved")
 def get_unresolved_tks():

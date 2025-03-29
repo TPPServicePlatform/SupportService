@@ -135,16 +135,21 @@ class HelpTKs:
                 return False
         return True
     
-    def _get_new_tks(self, from_date: str, to_date: str) -> int:
+    def _get_new_tks(self, from_date: str, to_date: str) -> dict:
         with self.engine.connect() as connection:
             query = self.help_tks.select().where(
                 (self.help_tks.c.created_at >= from_date) & 
                 (self.help_tks.c.created_at <= to_date)
             )
             result = connection.execute(query)
-            return result.fetchall()
+            tks = result.fetchall()
+            tks_list = []
+            for tk in tks:
+                dict_tk = tk._asdict()
+                tks_list.append(dict_tk)
+            return tks_list
         
-    def _get_resolved_tks(self, from_date: str, to_date: str) -> int:
+    def _get_resolved_tks(self, from_date: str, to_date: str):
         with self.engine.connect() as connection:
             query = self.help_tks.select().where(
                 (self.help_tks.c.updated_at >= from_date) & 
@@ -152,7 +157,12 @@ class HelpTKs:
                 (self.help_tks.c.resolved == True)
             )
             result = connection.execute(query)
-            return result.fetchall()
+            tks = result.fetchall()
+            tks_list = []
+            for tk in tks:
+                dict_tk = tk._asdict()
+                tks_list.append(dict_tk)
+            return tks_list
     
     def last_month_stats(self) -> Optional[dict]:
         """
