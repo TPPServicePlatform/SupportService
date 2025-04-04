@@ -184,17 +184,11 @@ class HelpTKs:
         resolved_last_month = len(self._get_resolved_tks(previous_month, this_month))
         perc_diff_resolved = perc_diff(resolved_this_month, resolved_last_month)
         
-        # return {
-        #     "new_this_month": new_this_month,
-        #     "perc_diff_new": perc_diff_new,
-        #     "resolved_this_month": resolved_this_month,
-        #     "perc_diff_resolved": perc_diff_resolved
-        # }
         return { # MOCK HERE
-            "new_this_month": random.randint(1, 100),
-            "perc_diff_new": random.choice([1, -1]) * random.randint(1, 100) / 100,
-            "resolved_this_month": random.randint(1, 100),
-            "perc_diff_resolved": random.choice([1, -1]) * random.randint(1, 100) / 100
+            "new_this_month": new_this_month + 14,
+            "perc_diff_new": 0.13, #perc_diff_new,
+            "resolved_this_month": resolved_this_month + 8,
+            "perc_diff_resolved": -0.1, #perc_diff_resolved
         }
         
     def tickets_by_day(self, from_date: str, to_date: str) -> Optional[dict]:

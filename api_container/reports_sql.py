@@ -100,17 +100,6 @@ class Reports:
             report = result.fetchone()
             if report is None:
                 return None
-                # return {
-                #     "uuid": "mock_uuid", # MOCK HERE
-                #     "type": "ACCOUNT",
-                #     "target_identifier": "mock_target_identifier",
-                #     "title": "mock_title",
-                #     "description": "mock_description",
-                #     "complainant": "mock_complainant",
-                #     "created_at": "2021-08-01 00:00:00",
-                #     "updated_at": "2021-08-01 00:00:00",
-                #     "resolved": False
-                # }
             return report._asdict()
     
     def get_by_target(self, type: str, target_identifier: str) -> Optional[list[dict]]:
@@ -198,17 +187,11 @@ class Reports:
         resolved_last_month = len(self._get_resolved_tks(previous_month, this_month))
         perc_diff_resolved = perc_diff(resolved_this_month, resolved_last_month)
         
-        # return {
-        #     "new_this_month": new_this_month,
-        #     "perc_diff_new": perc_diff_new,
-        #     "resolved_this_month": resolved_this_month,
-        #     "perc_diff_resolved": perc_diff_resolved
-        # }
         return { # MOCK HERE
-            "new_this_month": random.randint(1, 100),
-            "perc_diff_new": random.choice([1, -1]) * random.randint(1, 100) / 100,
-            "resolved_this_month": random.randint(1, 100),
-            "perc_diff_resolved": random.choice([1, -1]) * random.randint(1, 100) / 100
+            "new_this_month": new_this_month + 23,
+            "perc_diff_new": 0.32, # perc_diff_new,
+            "resolved_this_month": resolved_this_month + 11,
+            "perc_diff_resolved": 0.9, #perc_diff_resolved
         }
         
     def tickets_by_day(self, from_date: str, to_date: str) -> Optional[dict]:
